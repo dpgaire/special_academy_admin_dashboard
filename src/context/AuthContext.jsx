@@ -19,14 +19,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token');
+    const refreshToken = localStorage.getItem('refreshToken');
     const userData = localStorage.getItem('user');
     
-    if (token && userData) {
+    if (token && refreshToken && userData) {
       try {
         setUser(JSON.parse(userData));
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
       }
     }
@@ -36,16 +38,17 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
-      const { token } = response.data;      
+      const { accessToken, refreshToken, ...userData } = response.data;
       // Check if user is admin
-      if (response.data.role !== 'admin') {
+      if (userData.role !== 'admin') {
         toast.error('Access denied. Admin privileges required.');
         return false;
       }
       
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      setUser(response.data);
+      localStorage.setItem('token', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
       toast.success('Login successful!');
       return true;
     } catch (error) {
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authAPI.logout();
     setUser(null);
+    localStorage.removeItem('refreshToken');
     toast.success('Logged out successfully');
   };
 
