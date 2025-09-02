@@ -411,7 +411,7 @@ const Items = () => {
       </Card>
 
       {/* Items List */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>All Items ({filteredItems.length})</CardTitle>
           <CardDescription>
@@ -519,7 +519,129 @@ const Items = () => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
+      <Card>
+  <CardHeader>
+    <CardTitle>All Items ({filteredItems.length})</CardTitle>
+    <CardDescription>
+      Manage content items and their details
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    {filteredItems.length === 0 ? (
+      <section className="text-center py-8">
+        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400">
+          {searchTerm
+            ? "No items found matching your search."
+            : "No items found."}
+        </p>
+      </section>
+    ) : (
+      <section className="space-y-4">
+        {filteredItems.map((item) => (
+          <article
+            key={item._id}
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            {/* Left section */}
+            <section className="flex items-start sm:items-center gap-4 w-full">
+              <section
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${
+                  item.type === "pdf" ? "bg-black" : "bg-red-600"
+                }`}
+              >
+                {item.type === "pdf" ? (
+                  <File className="h-5 w-5" />
+                ) : (
+                  <Youtube className="h-5 w-5" />
+                )}
+              </section>
+
+              <section className="flex-1">
+                <section className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    {item.title}
+                  </h3>
+                  <Badge
+                    variant={item.type === "pdf" ? "default" : "destructive"}
+                    className="text-xs"
+                  >
+                    {item.type === "pdf" ? "PDF" : "YouTube"}
+                  </Badge>
+                </section>
+
+                <section className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{getCategoryName(item?.subcategory_id?._id)}</span>
+                  <span>→</span>
+                  <span>{getSubcategoryName(item?.subcategory_id?._id)}</span>
+                </section>
+
+                {item.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {item.description}
+                  </p>
+                )}
+
+                {item.type === "youtube_url" && item.youtube_url && (
+                  <section className="flex items-center gap-2 mt-1">
+                    <Link className="h-3 w-3 text-gray-400" />
+                    <a
+                      href={item.youtube_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
+                    >
+                      {item.youtube_url}
+                    </a>
+                  </section>
+                )}
+
+                {item.type === "pdf" && item.file_path && (
+                  <section className="flex items-center gap-2 mt-1">
+                    <File className="h-3 w-3 text-gray-400" />
+                     <a
+                      href={item.file_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
+                    >
+                      {item.file_path}
+                    </a>
+                  </section>
+                )}
+
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  Created: {new Date(item.createdAt).toLocaleDateString()}
+                </p>
+              </section>
+            </section>
+
+            {/* Right section (buttons) */}
+            <section className="flex items-center gap-2 self-end sm:self-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openEditModal(item)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteItem(item._id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </section>
+          </article>
+        ))}
+      </section>
+    )}
+  </CardContent>
+</Card>
+
 
       {/* Edit Item Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
