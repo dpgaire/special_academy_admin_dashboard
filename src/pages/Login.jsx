@@ -42,13 +42,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <div
+     className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4"
+     >
+      <Card className="w-full max-w-lg shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold text-gray-900">
+          <CardTitle className="text-3xl font-bold ">
             Special Academy
           </CardTitle>
-          <CardDescription className="text-gray-600">
+          <CardDescription >
             Admin Dashboard Login
           </CardDescription>
         </CardHeader>
@@ -116,7 +118,7 @@ const Login = () => {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm">
               Only administrators can access this dashboard
             </p>
           </div>
