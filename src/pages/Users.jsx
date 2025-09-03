@@ -8,7 +8,10 @@ import {
   Trash2, 
   User, 
   Mail, 
-  Save
+  Save,
+  EyeOff,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +33,7 @@ const Users = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register: registerCreate,
@@ -382,12 +386,27 @@ const Users = () => {
 
             <div className="space-y-2">
               <Label htmlFor="edit-password">New Password (Optional)</Label>
-              <Input
-                id="edit-password"
-                type="password"
-                placeholder="Leave blank to keep current password"
-                {...registerEdit('password')}
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  className="pl-10 pr-10"
+                  {...registerEdit('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               {errorsEdit.password && (
                 <p className="text-sm text-red-600">{errorsEdit.password.message}</p>
               )}

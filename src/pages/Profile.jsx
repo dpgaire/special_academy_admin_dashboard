@@ -1,21 +1,29 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { User, Mail, Shield, Save } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '../context/AuthContext';
-import { userUpdateSchema } from '../utils/validationSchemas';
-import { usersAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { User, Mail, Shield, Save, Lock, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "../context/AuthContext";
+import { userUpdateSchema } from "../utils/validationSchemas";
+import { usersAPI } from "../services/api";
+import toast from "react-hot-toast";
+
 
 const Profile = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -25,9 +33,9 @@ const Profile = () => {
   } = useForm({
     resolver: yupResolver(userUpdateSchema),
     defaultValues: {
-      fullName: user?.fullName || '',
-      email: user?.email || '',
-      role: user?.role || 'admin',
+      fullName: user?.fullName || "",
+      email: user?.email || "",
+      role: user?.role || "admin",
     },
   });
 
@@ -41,15 +49,16 @@ const Profile = () => {
       }
 
       await usersAPI.update(user._id, updateData);
-      
+
       // Update local storage with new user data
       const updatedUser = { ...user, ...updateData };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      toast.success('Profile updated successfully!');
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to update profile';
+      const message =
+        error.response?.data?.message || "Failed to update profile";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -58,9 +67,9 @@ const Profile = () => {
 
   const handleCancel = () => {
     reset({
-      fullName: user?.fullName || '',
-      email: user?.email || '',
-      role: user?.role || 'admin',
+      fullName: user?.fullName || "",
+      email: user?.email || "",
+      role: user?.role || "admin",
     });
     setIsEditing(false);
   };
@@ -68,7 +77,9 @@ const Profile = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profile</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Profile
+        </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
           Manage your account settings and preferences
         </p>
@@ -81,28 +92,36 @@ const Profile = () => {
             <div className="flex justify-center mb-4">
               <Avatar className="h-24 w-24">
                 <AvatarFallback className="bg-blue-500 text-white text-2xl">
-                  {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
+                  {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
                 </AvatarFallback>
               </Avatar>
             </div>
-            <CardTitle className="text-xl">{user?.fullName || 'Admin User'}</CardTitle>
-            <CardDescription>{user?.email || 'admin@example.com'}</CardDescription>
+            <CardTitle className="text-xl">
+              {user?.fullName || "Admin User"}
+            </CardTitle>
+            <CardDescription>
+              {user?.email || "admin@example.com"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <Shield className="h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Role</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Role
+                  </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                    {user?.role || 'Administrator'}
+                    {user?.role || "Administrator"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <User className="h-5 w-5 text-green-500" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Status</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Status
+                  </p>
                   <p className="text-sm text-green-600">Active</p>
                 </div>
               </div>
@@ -140,11 +159,13 @@ const Profile = () => {
                       placeholder="Enter your full name"
                       className="pl-10"
                       disabled={!isEditing}
-                      {...register('fullName')}
+                      {...register("fullName")}
                     />
                   </div>
                   {errors.fullName && (
-                    <p className="text-sm text-red-600">{errors.fullName.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.fullName.message}
+                    </p>
                   )}
                 </div>
 
@@ -158,11 +179,13 @@ const Profile = () => {
                       placeholder="Enter your email"
                       className="pl-10"
                       disabled={!isEditing}
-                      {...register('email')}
+                      {...register("email")}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-sm text-red-600">{errors.email.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -187,14 +210,32 @@ const Profile = () => {
               {isEditing && (
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password (Optional)</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Leave blank to keep current password"
-                    {...register('password')}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Leave blank to keep current password"
+                      className="pl-10 pr-10"
+                      {...register("password")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+
                   {errors.password && (
-                    <p className="text-sm text-red-600">{errors.password.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.password.message}
+                    </p>
                   )}
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Leave blank if you don't want to change your password
@@ -214,7 +255,7 @@ const Profile = () => {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
+                    <span>{isLoading ? "Saving..." : "Save Changes"}</span>
                   </Button>
                   <Button
                     type="button"
@@ -235,4 +276,3 @@ const Profile = () => {
 };
 
 export default Profile;
-
