@@ -279,67 +279,74 @@ const Users = () => {
       </Card>
 
       {/* Users List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-          <CardDescription>
-            Manage user accounts and their permissions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredUsers.length === 0 ? (
-            <div className="text-center py-8">
-              <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm ? 'No users found matching your search.' : 'No users found.'}
-              </p>
+    <Card>
+  <CardHeader>
+    <CardTitle>All Users ({filteredUsers.length})</CardTitle>
+    <CardDescription>
+      Manage user accounts and their permissions
+    </CardDescription>
+  </CardHeader>
+
+  <CardContent>
+    {filteredUsers.length === 0 ? (
+      <div className="text-center py-8">
+        <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400">
+          {searchTerm
+            ? 'No users found matching your search.'
+            : 'No users found.'}
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {filteredUsers.map((user) => (
+          <div
+            key={user._id}
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            {/* Left section */}
+            <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white break-words">
+                  {user.fullName}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
+                  {user.email}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredUsers.map((user) => (
-                <div
-                  key={user._id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {user.fullName}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {user.email}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Badge variant="default">
-                      {user.role}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditModal(user)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteUser(user._id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+
+            {/* Right section */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
+              <Badge variant="default" className="w-fit">
+                {user.role}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openEditModal(user)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteUser(user._id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        ))}
+      </div>
+    )}
+  </CardContent>
+</Card>
+
 
       {/* Edit User Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
