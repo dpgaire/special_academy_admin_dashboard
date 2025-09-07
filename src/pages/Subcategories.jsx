@@ -1,58 +1,78 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
   Layers,
   FolderOpen,
-  Save
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { subcategoriesAPI, categoriesAPI } from '../services/api';
-import { subcategorySchema } from '../utils/validationSchemas';
-import toast from 'react-hot-toast';
-import LoadingSpinner from '@/components/LoadingSpinner';
+  Save,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { subcategoriesAPI, categoriesAPI } from "../services/api";
+import { subcategorySchema } from "../utils/validationSchemas";
+import toast from "react-hot-toast";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Subcategories = () => {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSubcategory, setEditingSubcategory] = useState(null);
 
-  const { data: subcategories = [], isLoading: isLoadingSubcategories } = useQuery({
-    queryKey: ['subcategories'],
-    queryFn: async () => {
-      const response = await subcategoriesAPI.getAll();
-      return response.data || [];
-    },
-    onError: (error) => {
-      console.error('Error fetching subcategories:', error);
-      toast.error('Failed to load subcategories');
-    }
-  });
+  const { data: subcategories = [], isLoading: isLoadingSubcategories } =
+    useQuery({
+      queryKey: ["subcategories"],
+      queryFn: async () => {
+        const response = await subcategoriesAPI.getAll();
+        return response.data || [];
+      },
+      onError: (error) => {
+        console.error("Error fetching subcategories:", error);
+        toast.error("Failed to load subcategories");
+      },
+    });
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: async () => {
       const response = await categoriesAPI.getAll();
       return response.data || [];
     },
     onError: (error) => {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    }
+      console.error("Error fetching categories:", error);
+      toast.error("Failed to load categories");
+    },
   });
 
   const {
@@ -78,42 +98,53 @@ const Subcategories = () => {
   const createMutation = useMutation({
     mutationFn: subcategoriesAPI.create,
     onSuccess: () => {
-      toast.success('Subcategory created successfully!');
+      toast.success("Subcategory created successfully!");
       setIsCreateModalOpen(false);
       resetCreate();
-      queryClient.invalidateQueries(['subcategories']);
+      queryClient.invalidateQueries(["subcategories"]);
     },
     onError: (error) => {
-      const message = error.response?.data?.message || 'Failed to create subcategory';
+      const message =
+        error.response?.data?.message || "Failed to create subcategory";
       toast.error(message);
-    }
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => subcategoriesAPI.update(id, data),
+    mutationFn: ({ id, data }) => {
+      const { categoryId, ...rest } = data;
+      const transformedData = {
+        ...rest,
+        category_id: categoryId, // rename field
+      };
+
+      return subcategoriesAPI.update(id, transformedData);
+    },
     onSuccess: () => {
-      toast.success('Subcategory updated successfully!');
+      toast.success("Subcategory updated successfully!");
       setIsEditModalOpen(false);
       setEditingSubcategory(null);
       resetEdit();
-      queryClient.invalidateQueries(['subcategories']);
+      queryClient.invalidateQueries(["subcategories"]);
     },
     onError: (error) => {
-      const message = error.response?.data?.message || 'Failed to update subcategory';
+      const message =
+        error.response?.data?.message || "Failed to update subcategory";
       toast.error(message);
-    }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: subcategoriesAPI.delete,
     onSuccess: () => {
-      toast.success('Subcategory deleted successfully!');
-      queryClient.invalidateQueries(['subcategories']);
+      toast.success("Subcategory deleted successfully!");
+      queryClient.invalidateQueries(["subcategories"]);
     },
     onError: (error) => {
-      const message = error.response?.data?.message || 'Failed to delete subcategory';
+      const message =
+        error.response?.data?.message || "Failed to delete subcategory";
       toast.error(message);
-    }
+    },
   });
 
   const handleCreateSubcategory = (data) => {
@@ -125,7 +156,11 @@ const Subcategories = () => {
   };
 
   const handleDeleteSubcategory = (subcategoryId) => {
-    if (!window.confirm('Are you sure you want to delete this subcategory? This will also delete all associated items.')) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this subcategory? This will also delete all associated items."
+      )
+    ) {
       return;
     }
     deleteMutation.mutate(subcategoryId);
@@ -135,22 +170,29 @@ const Subcategories = () => {
     setEditingSubcategory(subcategory);
     resetEdit({
       name: subcategory.name,
-      description: subcategory.description || '',
+      description: subcategory.description || "",
       categoryId: subcategory.categoryId,
     });
     setIsEditModalOpen(true);
   };
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat._id === categoryId);
-    return category ? category.name : 'Unknown Category';
+    const category = categories.find((cat) => cat._id === categoryId);
+    return category ? category.name : "Unknown Category";
   };
 
-  const filteredSubcategories = subcategories.filter(subcategory =>
-    subcategory.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subcategory.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getCategoryName(subcategory.categoryId)?.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const filteredSubcategories = subcategories
+    .filter(
+      (subcategory) =>
+        subcategory.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        subcategory.description
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        getCategoryName(subcategory.categoryId)
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (isLoadingSubcategories || isLoadingCategories) {
     return <LoadingSpinner />;
@@ -160,7 +202,9 @@ const Subcategories = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subcategories</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Subcategories
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Manage subcategories within parent categories
           </p>
@@ -179,7 +223,10 @@ const Subcategories = () => {
                 Add a new subcategory to organize content
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmitCreate(handleCreateSubcategory)} className="space-y-4">
+            <form
+              onSubmit={handleSubmitCreate(handleCreateSubcategory)}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <Label htmlFor="create-name">Subcategory Name</Label>
                 <div className="relative">
@@ -188,17 +235,21 @@ const Subcategories = () => {
                     id="create-name"
                     placeholder="Enter subcategory name"
                     className="pl-10"
-                    {...registerCreate('name')}
+                    {...registerCreate("name")}
                   />
                 </div>
                 {errorsCreate.name && (
-                  <p className="text-sm text-red-600">{errorsCreate.name.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errorsCreate.name.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="create-categoryId">Select Category</Label>
-                <Select onValueChange={(value) => setValueCreate('categoryId', value)}>
+                <Select
+                  onValueChange={(value) => setValueCreate("categoryId", value)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
@@ -211,25 +262,35 @@ const Subcategories = () => {
                   </SelectContent>
                 </Select>
                 {errorsCreate.categoryId && (
-                  <p className="text-sm text-red-600">{errorsCreate.categoryId.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errorsCreate.categoryId.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="create-description">Description (Optional)</Label>
+                <Label htmlFor="create-description">
+                  Description (Optional)
+                </Label>
                 <Textarea
                   id="create-description"
                   placeholder="Enter subcategory description"
                   rows={3}
-                  {...registerCreate('description')}
+                  {...registerCreate("description")}
                 />
                 {errorsCreate.description && (
-                  <p className="text-sm text-red-600">{errorsCreate.description.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errorsCreate.description.message}
+                  </p>
                 )}
               </div>
 
               <div className="flex items-center space-x-2 pt-4">
-                <Button type="submit" disabled={createMutation.isLoading} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={createMutation.isLoading}
+                  className="flex-1"
+                >
                   {createMutation.isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -274,7 +335,9 @@ const Subcategories = () => {
       {/* Subcategories List */}
       <Card>
         <CardHeader>
-          <CardTitle>All Subcategories ({filteredSubcategories.length})</CardTitle>
+          <CardTitle>
+            All Subcategories ({filteredSubcategories.length})
+          </CardTitle>
           <CardDescription>
             Manage subcategories and their parent categories
           </CardDescription>
@@ -284,7 +347,9 @@ const Subcategories = () => {
             <div className="text-center py-8">
               <Layers className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm ? 'No subcategories found matching your search.' : 'No subcategories found.'}
+                {searchTerm
+                  ? "No subcategories found matching your search."
+                  : "No subcategories found."}
               </p>
             </div>
           ) : (
@@ -305,7 +370,7 @@ const Subcategories = () => {
                         </h3>
                         <Badge variant="outline" className="text-xs">
                           <FolderOpen className="h-3 w-3 mr-1" />
-                          {getCategoryName(subcategory.categoryId)}
+                          {getCategoryName(subcategory?.category_id?._id)}
                         </Badge>
                       </div>
                       {subcategory.description && (
@@ -314,7 +379,8 @@ const Subcategories = () => {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        Created: {new Date(subcategory.createdAt).toLocaleDateString()}
+                        Created:{" "}
+                        {new Date(subcategory.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -352,7 +418,10 @@ const Subcategories = () => {
               Update subcategory information
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmitEdit(handleEditSubcategory)} className="space-y-4">
+          <form
+            onSubmit={handleSubmitEdit(handleEditSubcategory)}
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <Label htmlFor="edit-name">Subcategory Name</Label>
               <div className="relative">
@@ -361,18 +430,20 @@ const Subcategories = () => {
                   id="edit-name"
                   placeholder="Enter subcategory name"
                   className="pl-10"
-                  {...registerEdit('name')}
+                  {...registerEdit("name")}
                 />
               </div>
               {errorsEdit.name && (
-                <p className="text-sm text-red-600">{errorsEdit.name.message}</p>
+                <p className="text-sm text-red-600">
+                  {errorsEdit.name.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="edit-categoryId">Parent Category</Label>
-              <Select 
-                onValueChange={(value) => setValueEdit('categoryId', value)} 
+              <Select
+                onValueChange={(value) => setValueEdit("categoryId", value)}
                 defaultValue={editingSubcategory?.categoryId}
               >
                 <SelectTrigger className="w-full">
@@ -387,7 +458,9 @@ const Subcategories = () => {
                 </SelectContent>
               </Select>
               {errorsEdit.categoryId && (
-                <p className="text-sm text-red-600">{errorsEdit.categoryId.message}</p>
+                <p className="text-sm text-red-600">
+                  {errorsEdit.categoryId.message}
+                </p>
               )}
             </div>
 
@@ -397,15 +470,21 @@ const Subcategories = () => {
                 id="edit-description"
                 placeholder="Enter subcategory description"
                 rows={3}
-                {...registerEdit('description')}
+                {...registerEdit("description")}
               />
               {errorsEdit.description && (
-                <p className="text-sm text-red-600">{errorsEdit.description.message}</p>
+                <p className="text-sm text-red-600">
+                  {errorsEdit.description.message}
+                </p>
               )}
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={updateMutation.isLoading} className="flex-1">
+              <Button
+                type="submit"
+                disabled={updateMutation.isLoading}
+                className="flex-1"
+              >
                 {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

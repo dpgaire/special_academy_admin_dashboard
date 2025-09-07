@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Search,
@@ -43,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { itemsAPI, subcategoriesAPI, categoriesAPI } from "../services/api";
 import { itemSchema } from "../utils/validationSchemas";
 import toast from "react-hot-toast";
-import LoadingSpinner from '@/components/LoadingSpinner';
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Items = () => {
   const queryClient = useQueryClient();
@@ -53,7 +53,7 @@ const Items = () => {
   const [editingItem, setEditingItem] = useState(null);
 
   const { data: items = [], isLoading: isLoadingItems } = useQuery({
-    queryKey: ['items'],
+    queryKey: ["items"],
     queryFn: async () => {
       const response = await itemsAPI.getAll();
       return response.data || [];
@@ -61,23 +61,24 @@ const Items = () => {
     onError: (error) => {
       console.error("Error fetching items:", error);
       toast.error("Failed to load items");
-    }
+    },
   });
 
-  const { data: subcategories = [], isLoading: isLoadingSubcategories } = useQuery({
-    queryKey: ['subcategories'],
-    queryFn: async () => {
-      const response = await subcategoriesAPI.getAll();
-      return response.data || [];
-    },
-    onError: (error) => {
-      console.error("Error fetching subcategories:", error);
-      toast.error("Failed to load subcategories");
-    }
-  });
+  const { data: subcategories = [], isLoading: isLoadingSubcategories } =
+    useQuery({
+      queryKey: ["subcategories"],
+      queryFn: async () => {
+        const response = await subcategoriesAPI.getAll();
+        return response.data || [];
+      },
+      onError: (error) => {
+        console.error("Error fetching subcategories:", error);
+        toast.error("Failed to load subcategories");
+      },
+    });
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: async () => {
       const response = await categoriesAPI.getAll();
       return response.data || [];
@@ -85,7 +86,7 @@ const Items = () => {
     onError: (error) => {
       console.error("Error fetching categories:", error);
       toast.error("Failed to load categories");
-    }
+    },
   });
 
   const {
@@ -119,39 +120,47 @@ const Items = () => {
       toast.success("Item created successfully!");
       setIsCreateModalOpen(false);
       resetCreate();
-      queryClient.invalidateQueries(['items']);
+      queryClient.invalidateQueries(["items"]);
     },
     onError: (error) => {
       const message = error.response?.data?.message || "Failed to create item";
       toast.error(message);
-    }
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => itemsAPI.update(id, data),
+    mutationFn: ({ id, data }) => {
+      const { subcategoryId, ...rest } = data;
+      const transformedData = {
+        ...rest,
+        subcategory_id: subcategoryId, // rename field
+      };
+
+      return subcategoriesAPI.update(id, transformedData);
+    },
     onSuccess: () => {
       toast.success("Item updated successfully!");
       setIsEditModalOpen(false);
       setEditingItem(null);
       resetEdit();
-      queryClient.invalidateQueries(['items']);
+      queryClient.invalidateQueries(["items"]);
     },
     onError: (error) => {
       const message = error.response?.data?.message || "Failed to update item";
       toast.error(message);
-    }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: itemsAPI.delete,
     onSuccess: () => {
       toast.success("Item deleted successfully!");
-      queryClient.invalidateQueries(['items']);
+      queryClient.invalidateQueries(["items"]);
     },
     onError: (error) => {
       const message = error.response?.data?.message || "Failed to delete item";
       toast.error(message);
-    }
+    },
   });
 
   const handleCreateItem = (data) => {
@@ -187,27 +196,30 @@ const Items = () => {
     return subcategory ? subcategory.name : "Unknown Subcategory";
   };
 
+
   const getCategoryName = (subcategoryId) => {
-    const subcategory = subcategories.find((sub) => sub._id === subcategoryId);
+    const subcategory = subcategories.find((sub) => sub._id === subcategoryId);   
     if (subcategory) {
       const category = categories.find(
-        (cat) => cat._id === subcategory.categoryId
-      );
-      return category ? category.name : "Unknown Category";
+      (cat) => cat._id === subcategory?.category_id?._id
+    );
+    return category ? category?.name : "Unknown Category fdsfasf";
     }
+    
   };
-
-  const filteredItems = items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getSubcategoryName(item.subcategoryId)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      getCategoryName(item.subcategoryId)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const filteredItems = items
+    .filter(
+      (item) =>
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getSubcategoryName(item.subcategoryId)
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        getCategoryName(item.subcategoryId)
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (isLoadingItems || isLoadingSubcategories || isLoadingCategories) {
     return <LoadingSpinner />;
@@ -458,7 +470,9 @@ const Items = () => {
                           {item.name}
                         </h3>
                         <Badge
-                          variant={item.type === "pdf" ? "default" : "destructive"}
+                          variant={
+                            item.type === "pdf" ? "default" : "destructive"
+                          }
                           className="text-xs"
                         >
                           {item.type === "pdf" ? "PDF" : "YouTube"}
@@ -466,9 +480,9 @@ const Items = () => {
                       </section>
 
                       <section className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{getCategoryName(item.subcategoryId)}</span>
-                        <span>→</span>
-                        <span>{getSubcategoryName(item.subcategoryId)}</span>
+                      <span>{getCategoryName(item?.subcategory_id?._id)}</span>
+                    <span>-&gt;</span>
+                      <span>{getSubcategoryName(item?.subcategory_id?._id)}</span>
                       </section>
 
                       {item.description && (
@@ -536,7 +550,6 @@ const Items = () => {
           )}
         </CardContent>
       </Card>
-
 
       {/* Edit Item Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
@@ -669,7 +682,11 @@ const Items = () => {
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={updateMutation.isLoading} className="flex-1">
+              <Button
+                type="submit"
+                disabled={updateMutation.isLoading}
+                className="flex-1"
+              >
                 {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
