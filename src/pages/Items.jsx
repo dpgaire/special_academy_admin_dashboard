@@ -42,7 +42,6 @@ import { Badge } from "@/components/ui/badge";
 import { itemsAPI, subcategoriesAPI, categoriesAPI } from "../services/api";
 import { itemSchema } from "../utils/validationSchemas";
 import toast from "react-hot-toast";
-import { generateUniqueId } from "@/lib/utils";
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -106,8 +105,7 @@ const Items = () => {
     setIsSubmitting(true);
     try {
       const dataToSend = {
-        _id: generateUniqueId(),
-        title: data.title,
+        name: data.name,
         description: data.description || "",
         subcategory_id: data.subcategoryId,
         type: data.type,
@@ -162,7 +160,7 @@ const Items = () => {
   const openEditModal = (item) => {
     setEditingItem(item);
     resetEdit({
-      title: item.title,
+      name: item.name,
       description: item.description || "",
       type: item.type,
       subcategoryId: item.subcategoryId,
@@ -185,12 +183,11 @@ const Items = () => {
     );
     return category ? category?.name : "Unknown Category fdsfasf";
     }
-    
   };
 
   const filteredItems = items.filter(
     (item) =>
-      item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getSubcategoryName(item.subcategoryId)
         ?.toLowerCase()
@@ -198,7 +195,7 @@ const Items = () => {
       getCategoryName(item.subcategoryId)
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (loading) {
     return (
@@ -238,19 +235,19 @@ const Items = () => {
               className="space-y-4"
             >
               <div className="space-y-2">
-                <Label htmlFor="create-title">Title</Label>
+                <Label htmlFor="create-name">Name</Label>
                 <div className="relative">
                   <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="create-title"
-                    placeholder="Enter item title"
+                    id="create-name"
+                    placeholder="Enter item name"
                     className="pl-10"
-                    {...registerCreate("title")}
+                    {...registerCreate("name")}
                   />
                 </div>
-                {errorsCreate.title && (
+                {errorsCreate.name && (
                   <p className="text-sm text-red-600">
-                    {errorsCreate.title.message}
+                    {errorsCreate.name.message}
                   </p>
                 )}
               </div>
@@ -409,117 +406,6 @@ const Items = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Items List */}
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>All Items ({filteredItems.length})</CardTitle>
-          <CardDescription>
-            Manage content items and their details
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredItems.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm
-                  ? "No items found matching your search."
-                  : "No items found."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredItems.map((item) => (
-                <div
-                  key={item._id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
-                        item.type === "pdf" ? "bg-black" : "bg-red-600"
-                      }`}
-                    >
-                      {item.type === "pdf" ? (
-                        <File className="h-5 w-5" />
-                      ) : (
-                        <Youtube className="h-5 w-5" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
-                          {item.title}
-                        </h3>
-                        <Badge
-                          variant={
-                            item.type === "pdf" ? "default" : "destructive"
-                          }
-                          className="text-xs"
-                        >
-                          {item.type === "pdf" ? "PDF" : "YouTube"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{getCategoryName(item?.subcategory_id?._id)}</span>
-                        <span>→</span>
-                        <span>{getSubcategoryName(item?.subcategory_id?._id)}</span>
-                      </div>
-                      {item.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {item.description}
-                        </p>
-                      )}
-                      {item.type === "youtube_url" && item.youtube_url && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Link className="h-3 w-3 text-gray-400" />
-                          <a
-                            href={item.youtube_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-xs"
-                          >
-                            {item.youtube_url}
-                          </a>
-                        </div>
-                      )}
-                      {item.type === "pdf" && item.file_path && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <File className="h-3 w-3 text-gray-400" />
-                          <span className="text-xs text-gray-500 truncate max-w-xs">
-                            {item.file_path}
-                          </span>
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        Created: {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditModal(item)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteItem(item._id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card> */}
       <Card>
   <CardHeader>
     <CardTitle>All Items ({filteredItems.length})</CardTitle>
@@ -561,7 +447,7 @@ const Items = () => {
               <section className="flex-1">
                 <section className="flex flex-wrap items-center gap-2 mb-1">
                   <h3 className="font-medium text-gray-900 dark:text-white">
-                    {item.title}
+                    {item.name}
                   </h3>
                   <Badge
                     variant={item.type === "pdf" ? "default" : "destructive"}
@@ -655,19 +541,19 @@ const Items = () => {
             className="space-y-4"
           >
             <div className="space-y-2">
-              <Label htmlFor="edit-title">Title</Label>
+              <Label htmlFor="edit-name">Name</Label>
               <div className="relative">
                 <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  id="edit-title"
-                  placeholder="Enter item title"
+                  id="edit-name"
+                  placeholder="Enter item name"
                   className="pl-10"
-                  {...registerEdit("title")}
+                  {...registerEdit("name")}
                 />
               </div>
-              {errorsEdit.title && (
+              {errorsEdit.name && (
                 <p className="text-sm text-red-600">
-                  {errorsEdit.title.message}
+                  {errorsEdit.name.message}
                 </p>
               )}
             </div>

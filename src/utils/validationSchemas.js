@@ -79,10 +79,10 @@ export const subcategorySchema = yup.object({
 
 // Item validation schema
 export const itemSchema = yup.object({
-  title: yup
+  name: yup
     .string()
-    .min(2, 'Title must be at least 2 characters')
-    .required('Title is required'),
+    .min(2, 'Name must be at least 2 characters')
+    .required('Name is required'),
   description: yup
     .string()
     .optional(),

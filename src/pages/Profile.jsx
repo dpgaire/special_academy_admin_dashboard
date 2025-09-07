@@ -20,7 +20,7 @@ import toast from "react-hot-toast";
 
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user ,setUser} = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +53,7 @@ const Profile = () => {
       // Update local storage with new user data
       const updatedUser = { ...user, ...updateData };
       localStorage.setItem("user", JSON.stringify(updatedUser));
-
+      setUser(updatedUser);
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (error) {

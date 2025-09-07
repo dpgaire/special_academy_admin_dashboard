@@ -163,19 +163,13 @@ const Layout = ({ children }) => {
 
                 {/* User menu */}
                 <div className="flex items-center space-x-3">
-                  <div className="hidden sm:block text-right">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user?.fullName || 'Admin User'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {user?.role || 'Administrator'}
-                    </p>
-                  </div>
-                  <Avatar className="h-8 w-8">
+                  <Link to="/profile">
+                  <Avatar className="h-8 w-8 cursor-pointer">
                     <AvatarFallback className="bg-blue-500 text-white">
                       {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
                     </AvatarFallback>
                   </Avatar>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"

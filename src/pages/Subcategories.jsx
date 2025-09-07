@@ -21,7 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { subcategoriesAPI, categoriesAPI } from '../services/api';
 import { subcategorySchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
-import { generateUniqueId } from '@/lib/utils';
 
 const Subcategories = () => {
   const [subcategories, setSubcategories] = useState([]);
@@ -77,7 +76,6 @@ const Subcategories = () => {
     setIsSubmitting(true);
     try {
       const dataToSend = {
-        _id:generateUniqueId(),
         name: data.name,
         description: data.description || '',
         category_id: data.categoryId,
@@ -146,7 +144,7 @@ const Subcategories = () => {
     subcategory.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     subcategory.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     getCategoryName(subcategory.categoryId)?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (loading) {
     return (

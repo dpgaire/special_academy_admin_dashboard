@@ -18,7 +18,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { categoriesAPI } from '../services/api';
 import { categorySchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
-import { generateUniqueId } from '@/lib/utils';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -66,8 +65,7 @@ const Categories = () => {
   const handleCreateCategory = async (data) => {
     setIsSubmitting(true);
     try {
-      const categoryToSubmit = {...data,_id:generateUniqueId()}
-      await categoriesAPI.create(categoryToSubmit);
+      await categoriesAPI.create(data);
       toast.success('Category created successfully!');
       setIsCreateModalOpen(false);
       resetCreate();
@@ -124,7 +122,7 @@ const Categories = () => {
   const filteredCategories = categories.filter(category =>
     category.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     category.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (loading) {
     return (
