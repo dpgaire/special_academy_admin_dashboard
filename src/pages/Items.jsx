@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Search,
@@ -42,17 +43,51 @@ import { Badge } from "@/components/ui/badge";
 import { itemsAPI, subcategoriesAPI, categoriesAPI } from "../services/api";
 import { itemSchema } from "../utils/validationSchemas";
 import toast from "react-hot-toast";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Items = () => {
-  const [items, setItems] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: items = [], isLoading: isLoadingItems } = useQuery({
+    queryKey: ["items"],
+    queryFn: async () => {
+      const response = await itemsAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error("Error fetching items:", error);
+      toast.error("Failed to load items");
+    },
+  });
+
+  const { data: subcategories = [], isLoading: isLoadingSubcategories } =
+    useQuery({
+      queryKey: ["subcategories"],
+      queryFn: async () => {
+        const response = await subcategoriesAPI.getAll();
+        return response.data || [];
+      },
+      onError: (error) => {
+        console.error("Error fetching subcategories:", error);
+        toast.error("Failed to load subcategories");
+      },
+    });
+
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const response = await categoriesAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error("Error fetching categories:", error);
+      toast.error("Failed to load categories");
+    },
+  });
 
   const {
     register: registerCreate,
@@ -79,82 +114,68 @@ const Items = () => {
   const createType = useWatch({ control: controlCreate, name: "type" });
   const editType = useWatch({ control: controlEdit, name: "type" });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [itemsRes, subcategoriesRes, categoriesRes] = await Promise.all([
-        itemsAPI.getAll(),
-        subcategoriesAPI.getAll(),
-        categoriesAPI.getAll(),
-      ]);
-      setItems(itemsRes.data || []);
-      setSubcategories(subcategoriesRes.data || []);
-      setCategories(categoriesRes.data || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateItem = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const dataToSend = {
-        name: data.name,
-        description: data.description || "",
-        subcategory_id: data.subcategoryId,
-        type: data.type,
-        file_path: data.file_path || "",
-        youtube_url: data.youtube_url || "",
-      };
-      await itemsAPI.create(dataToSend);
+  const createMutation = useMutation({
+    mutationFn: itemsAPI.create,
+    onSuccess: () => {
       toast.success("Item created successfully!");
       setIsCreateModalOpen(false);
       resetCreate();
-      fetchData();
-    } catch (error) {
+      queryClient.invalidateQueries(["items"]);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || "Failed to create item";
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+  });
 
-  const handleEditItem = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await itemsAPI.update(editingItem._id, data);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => {
+      const { subcategoryId, ...rest } = data;
+      const transformedData = {
+        ...rest,
+        subcategory_id: subcategoryId, // rename field
+      };
+
+      return subcategoriesAPI.update(id, transformedData);
+    },
+    onSuccess: () => {
       toast.success("Item updated successfully!");
       setIsEditModalOpen(false);
       setEditingItem(null);
       resetEdit();
-      fetchData();
-    } catch (error) {
+      queryClient.invalidateQueries(["items"]);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || "Failed to update item";
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: itemsAPI.delete,
+    onSuccess: () => {
+      toast.success("Item deleted successfully!");
+      queryClient.invalidateQueries(["items"]);
+    },
+    onError: (error) => {
+      const message = error.response?.data?.message || "Failed to delete item";
+      toast.error(message);
+    },
+  });
+
+  const handleCreateItem = (data) => {
+    createMutation.mutate(data);
   };
 
-  const handleDeleteItem = async (itemId) => {
+  const handleEditItem = (data) => {
+    updateMutation.mutate({ id: editingItem._id, data });
+  };
+
+  const handleDeleteItem = (itemId) => {
     if (!window.confirm("Are you sure you want to delete this item?")) {
       return;
     }
-
-    try {
-      await itemsAPI.delete(itemId);
-      toast.success("Item deleted successfully!");
-      fetchData();
-    } catch (error) {
-      const message = error.response?.data?.message || "Failed to delete item";
-      toast.error(message);
-    }
+    deleteMutation.mutate(itemId);
   };
 
   const openEditModal = (item) => {
@@ -175,6 +196,7 @@ const Items = () => {
     return subcategory ? subcategory.name : "Unknown Subcategory";
   };
 
+
   const getCategoryName = (subcategoryId) => {
     const subcategory = subcategories.find((sub) => sub._id === subcategoryId);   
     if (subcategory) {
@@ -183,26 +205,24 @@ const Items = () => {
     );
     return category ? category?.name : "Unknown Category fdsfasf";
     }
+    
   };
+  const filteredItems = items
+    .filter(
+      (item) =>
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getSubcategoryName(item.subcategoryId)
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        getCategoryName(item.subcategoryId)
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getSubcategoryName(item.subcategoryId)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      getCategoryName(item.subcategoryId)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoadingItems || isLoadingSubcategories || isLoadingCategories) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -260,7 +280,7 @@ const Items = () => {
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a subcategory" />
                   </SelectTrigger>
                   <SelectContent>
                     {subcategories.map((subcategory) => (
@@ -363,10 +383,10 @@ const Items = () => {
               <div className="flex items-center space-x-2 pt-4">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                   className="flex-1"
                 >
-                  {isSubmitting ? (
+                  {createMutation.isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Creating...</span>
@@ -382,7 +402,7 @@ const Items = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setIsCreateModalOpen(false)}
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                 >
                   Cancel
                 </Button>
@@ -407,127 +427,129 @@ const Items = () => {
         </CardContent>
       </Card>
       <Card>
-  <CardHeader>
-    <CardTitle>All Items ({filteredItems.length})</CardTitle>
-    <CardDescription>
-      Manage content items and their details
-    </CardDescription>
-  </CardHeader>
-  <CardContent>
-    {filteredItems.length === 0 ? (
-      <section className="text-center py-8">
-        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">
-          {searchTerm
-            ? "No items found matching your search."
-            : "No items found."}
-        </p>
-      </section>
-    ) : (
-      <section className="space-y-4">
-        {filteredItems.map((item) => (
-          <article
-            key={item._id}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            {/* Left section */}
-            <section className="flex items-start sm:items-center gap-4 w-full">
-              <section
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${
-                  item.type === "pdf" ? "bg-black" : "bg-red-600"
-                }`}
-              >
-                {item.type === "pdf" ? (
-                  <File className="h-5 w-5" />
-                ) : (
-                  <Youtube className="h-5 w-5" />
-                )}
-              </section>
-
-              <section className="flex-1">
-                <section className="flex flex-wrap items-center gap-2 mb-1">
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    {item.name}
-                  </h3>
-                  <Badge
-                    variant={item.type === "pdf" ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    {item.type === "pdf" ? "PDF" : "YouTube"}
-                  </Badge>
-                </section>
-
-                <section className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{getCategoryName(item?.subcategory_id?._id)}</span>
-                  <span>→</span>
-                  <span>{getSubcategoryName(item?.subcategory_id?._id)}</span>
-                </section>
-
-                {item.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {item.description}
-                  </p>
-                )}
-
-                {item.type === "youtube_url" && item.youtube_url && (
-                  <section className="flex items-center gap-2 mt-1">
-                    <Link className="h-3 w-3 text-gray-400" />
-                    <a
-                      href={item.youtube_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
-                    >
-                      {item.youtube_url}
-                    </a>
-                  </section>
-                )}
-
-                {item.type === "pdf" && item.file_path && (
-                  <section className="flex items-center gap-2 mt-1">
-                    <File className="h-3 w-3 text-gray-400" />
-                     <a
-                      href={item.file_path}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
-                    >
-                      {item.file_path}
-                    </a>
-                  </section>
-                )}
-
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  Created: {new Date(item.createdAt).toLocaleDateString()}
-                </p>
-              </section>
+        <CardHeader>
+          <CardTitle>All Items ({filteredItems.length})</CardTitle>
+          <CardDescription>
+            Manage content items and their details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filteredItems.length === 0 ? (
+            <section className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
+                {searchTerm
+                  ? "No items found matching your search."
+                  : "No items found."}
+              </p>
             </section>
+          ) : (
+            <section className="space-y-4">
+              {filteredItems.map((item) => (
+                <article
+                  key={item._id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  {/* Left section */}
+                  <section className="flex items-start sm:items-center gap-4 w-full">
+                    <section
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${
+                        item.type === "pdf" ? "bg-black" : "bg-red-600"
+                      }`}
+                    >
+                      {item.type === "pdf" ? (
+                        <File className="h-5 w-5" />
+                      ) : (
+                        <Youtube className="h-5 w-5" />
+                      )}
+                    </section>
 
-            {/* Right section (buttons) */}
-            <section className="flex items-center gap-2 self-end sm:self-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEditModal(item)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteItem(item._id)}
-                className="text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+                    <section className="flex-1">
+                      <section className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {item.name}
+                        </h3>
+                        <Badge
+                          variant={
+                            item.type === "pdf" ? "default" : "destructive"
+                          }
+                          className="text-xs"
+                        >
+                          {item.type === "pdf" ? "PDF" : "YouTube"}
+                        </Badge>
+                      </section>
+
+                      <section className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{getCategoryName(item?.subcategory_id?._id)}</span>
+                    <span>-&gt;</span>
+                      <span>{getSubcategoryName(item?.subcategory_id?._id)}</span>
+                      </section>
+
+                      {item.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {item.type === "youtube_url" && item.youtube_url && (
+                        <section className="flex items-center gap-2 mt-1">
+                          <Link className="h-3 w-3 text-gray-400" />
+                          <a
+                            href={item.youtube_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
+                          >
+                            {item.youtube_url}
+                          </a>
+                        </section>
+                      )}
+
+                      {item.type === "pdf" && item.file_path && (
+                        <section className="flex items-center gap-2 mt-1">
+                          <File className="h-3 w-3 text-gray-400" />
+                          <a
+                            href={item.file_path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[160px] sm:max-w-xs"
+                          >
+                            {item.file_path}
+                          </a>
+                        </section>
+                      )}
+
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Created: {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </section>
+                  </section>
+
+                  {/* Right section (buttons) */}
+                  <section className="flex items-center gap-2 self-end sm:self-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditModal(item)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteItem(item._id)}
+                      className="text-red-600 hover:text-red-700"
+                      disabled={deleteMutation.isLoading}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </section>
+                </article>
+              ))}
             </section>
-          </article>
-        ))}
-      </section>
-    )}
-  </CardContent>
-</Card>
-
+          )}
+        </CardContent>
+      </Card>
 
       {/* Edit Item Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
@@ -565,7 +587,7 @@ const Items = () => {
                 defaultValue={editingItem?.subcategoryId}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue placeholder="Select a subcategory" />
                 </SelectTrigger>
                 <SelectContent>
                   {subcategories.map((subcategory) => (
@@ -660,8 +682,12 @@ const Items = () => {
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
+              <Button
+                type="submit"
+                disabled={updateMutation.isLoading}
+                className="flex-1"
+              >
+                {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Updating...</span>
@@ -677,7 +703,7 @@ const Items = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
-                disabled={isSubmitting}
+                disabled={updateMutation.isLoading}
               >
                 Cancel
               </Button>

@@ -1,52 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FolderOpen, Layers, FileText } from 'lucide-react';
 import { usersAPI, categoriesAPI, subcategoriesAPI, itemsAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
-    users: 0,
-    categories: 0,
-    subcategories: 0,
-    items: 0,
-  });
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      try {
+        const [usersRes, categoriesRes, subcategoriesRes, itemsRes] = await Promise.all([
+          usersAPI.getAll(),
+          categoriesAPI.getAll(),
+          subcategoriesAPI.getAll(),
+          itemsAPI.getAll(),
+        ]);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const [usersRes, categoriesRes, subcategoriesRes, itemsRes] = await Promise.all([
-        usersAPI.getAll(),
-        categoriesAPI.getAll(),
-        subcategoriesAPI.getAll(),
-        itemsAPI.getAll(),
-      ]);
-
-      setStats({
-        users: usersRes.data.length || 0,
-        categories: categoriesRes.data.length || 0,
-        subcategories: subcategoriesRes.data.length || 0,
-        items: itemsRes.data.length || 0,
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      toast.error('Failed to load dashboard statistics');
-    } finally {
-      setLoading(false);
-    }
-  };
+        return {
+          users: usersRes.data.length || 0,
+          categories: categoriesRes.data.length || 0,
+          subcategories: subcategoriesRes.data.length || 0,
+          items: itemsRes.data.length || 0,
+        };
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        toast.error('Failed to load dashboard statistics');
+        return { users: 0, categories: 0, subcategories: 0, items: 0 };
+      }
+    },
+  });
 
   const statCards = [
     {
       title: 'Total Users',
-      value: stats.users,
+      value: stats?.users,
       icon: Users,
       description: 'Registered users in the system',
       color: 'text-blue-600',
@@ -54,7 +46,7 @@ const Dashboard = () => {
     },
     {
       title: 'Categories',
-      value: stats.categories,
+      value: stats?.categories,
       icon: FolderOpen,
       description: 'Main content categories',
       color: 'text-green-600',
@@ -62,7 +54,7 @@ const Dashboard = () => {
     },
     {
       title: 'Subcategories',
-      value: stats.subcategories,
+      value: stats?.subcategories,
       icon: Layers,
       description: 'Content subcategories',
       color: 'text-purple-600',
@@ -70,7 +62,7 @@ const Dashboard = () => {
     },
     {
       title: 'Items',
-      value: stats.items,
+      value: stats?.items,
       icon: FileText,
       description: 'Total content items',
       color: 'text-orange-600',
@@ -78,12 +70,8 @@ const Dashboard = () => {
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -183,4 +171,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Search,
@@ -42,16 +43,27 @@ import { Badge } from "@/components/ui/badge";
 import { usersAPI } from "../services/api";
 import { userSchema, userUpdateSchema } from "../utils/validationSchemas";
 import toast from "react-hot-toast";
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const Users = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await usersAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to load users");
+    }
+  });
 
   const {
     register: registerCreate,
@@ -73,75 +85,64 @@ const Users = () => {
     resolver: yupResolver(userUpdateSchema),
   });
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await usersAPI.getAll();
-      setUsers(response.data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateUser = async (data) => {
-      console.log('data',data)
-    setIsSubmitting(true);
-    try {
-      await usersAPI.create(data);
+  const createMutation = useMutation({
+    mutationFn: usersAPI.create,
+    onSuccess: () => {
       toast.success("User created successfully!");
       setIsCreateModalOpen(false);
       resetCreate();
-      fetchUsers();
-    } catch (error) {
+      queryClient.invalidateQueries(['users']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || "Failed to create user";
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleEditUser = async (data) => {
-    setIsSubmitting(true);
-    try {
-      // Remove password if empty
-      const updateData = { ...data };
-      if (!updateData.password) {
-        delete updateData.password;
-      }
-
-      await usersAPI.update(editingUser._id, updateData);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => usersAPI.update(id, data),
+    onSuccess: () => {
       toast.success("User updated successfully!");
       setIsEditModalOpen(false);
       setEditingUser(null);
       resetEdit();
-      fetchUsers();
-    } catch (error) {
+      queryClient.invalidateQueries(['users']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || "Failed to update user";
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) {
-      return;
-    }
-
-    try {
-      await usersAPI.delete(userId);
+  const deleteMutation = useMutation({
+    mutationFn: usersAPI.delete,
+    onSuccess: () => {
       toast.success("User deleted successfully!");
-      fetchUsers();
-    } catch (error) {
+      queryClient.invalidateQueries(['users']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || "Failed to delete user";
       toast.error(message);
     }
+  });
+
+  const handleCreateUser = (data) => {
+    createMutation.mutate(data);
+  };
+
+  const handleEditUser = (data) => {
+    const updateData = { ...data };
+    if (!updateData.password) {
+      delete updateData.password;
+    }
+    updateMutation.mutate({ id: editingUser._id, data: updateData });
+  };
+
+  const handleDeleteUser = (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+    deleteMutation.mutate(userId);
   };
 
   const openEditModal = (user) => {
@@ -162,12 +163,8 @@ const Users = () => {
     )
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -289,10 +286,10 @@ const Users = () => {
               <div className="flex items-center space-x-2 pt-4">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                   className="flex-1"
                 >
-                  {isSubmitting ? (
+                  {createMutation.isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Creating...</span>
@@ -308,7 +305,7 @@ const Users = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setIsCreateModalOpen(false)}
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                 >
                   Cancel
                 </Button>
@@ -391,6 +388,7 @@ const Users = () => {
                       size="sm"
                       onClick={() => handleDeleteUser(user._id)}
                       className="text-red-600 hover:text-red-700"
+                      disabled={deleteMutation.isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -502,8 +500,8 @@ const Users = () => {
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
+              <Button type="submit" disabled={updateMutation.isLoading} className="flex-1">
+                {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Updating...</span>
@@ -519,7 +517,7 @@ const Users = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
-                disabled={isSubmitting}
+                disabled={updateMutation.isLoading}
               >
                 Cancel
               </Button>
