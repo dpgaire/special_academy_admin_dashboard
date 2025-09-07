@@ -178,6 +178,7 @@ const Profile = () => {
                       type="email"
                       placeholder="Enter your email"
                       className="pl-10"
+                      autoComplete="off"
                       disabled={!isEditing}
                       {...register("email")}
                     />
@@ -217,6 +218,7 @@ const Profile = () => {
                       type={showPassword ? "text" : "password"}
                       placeholder="Leave blank to keep current password"
                       className="pl-10 pr-10"
+                      autoComplete="new-password"
                       {...register("password")}
                     />
                     <button

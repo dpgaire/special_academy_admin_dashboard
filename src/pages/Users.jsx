@@ -226,6 +226,7 @@ const Users = () => {
                     type="email"
                     placeholder="Enter email address"
                     className="pl-10"
+                    autoComplete="off"
                     {...registerCreate("email")}
                   />
                 </div>
@@ -244,6 +245,7 @@ const Users = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter password"
                   className="pl-10 pr-10"
+                  autoComplete="new-password"
                   {...registerCreate('password')}
                 />
                
