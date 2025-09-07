@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
   Search, 
@@ -21,16 +22,38 @@ import { Badge } from '@/components/ui/badge';
 import { subcategoriesAPI, categoriesAPI } from '../services/api';
 import { subcategorySchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const Subcategories = () => {
-  const [subcategories, setSubcategories] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSubcategory, setEditingSubcategory] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: subcategories = [], isLoading: isLoadingSubcategories } = useQuery({
+    queryKey: ['subcategories'],
+    queryFn: async () => {
+      const response = await subcategoriesAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error('Error fetching subcategories:', error);
+      toast.error('Failed to load subcategories');
+    }
+  });
+
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await categoriesAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    }
+  });
 
   const {
     register: registerCreate,
@@ -52,77 +75,60 @@ const Subcategories = () => {
     resolver: yupResolver(subcategorySchema),
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [subcategoriesRes, categoriesRes] = await Promise.all([
-        subcategoriesAPI.getAll(),
-        categoriesAPI.getAll(),
-      ]);
-      setSubcategories(subcategoriesRes.data || []);
-      setCategories(categoriesRes.data || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateSubcategory = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const dataToSend = {
-        name: data.name,
-        description: data.description || '',
-        category_id: data.categoryId,
-      }
-      await subcategoriesAPI.create(dataToSend);
+  const createMutation = useMutation({
+    mutationFn: subcategoriesAPI.create,
+    onSuccess: () => {
       toast.success('Subcategory created successfully!');
       setIsCreateModalOpen(false);
       resetCreate();
-      fetchData();
-    } catch (error) {
+      queryClient.invalidateQueries(['subcategories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to create subcategory';
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleEditSubcategory = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await subcategoriesAPI.update(editingSubcategory._id, data);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => subcategoriesAPI.update(id, data),
+    onSuccess: () => {
       toast.success('Subcategory updated successfully!');
       setIsEditModalOpen(false);
       setEditingSubcategory(null);
       resetEdit();
-      fetchData();
-    } catch (error) {
+      queryClient.invalidateQueries(['subcategories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to update subcategory';
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleDeleteSubcategory = async (subcategoryId) => {
-    if (!window.confirm('Are you sure you want to delete this subcategory? This will also delete all associated items.')) {
-      return;
-    }
-
-    try {
-      await subcategoriesAPI.delete(subcategoryId);
+  const deleteMutation = useMutation({
+    mutationFn: subcategoriesAPI.delete,
+    onSuccess: () => {
       toast.success('Subcategory deleted successfully!');
-      fetchData();
-    } catch (error) {
+      queryClient.invalidateQueries(['subcategories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to delete subcategory';
       toast.error(message);
     }
+  });
+
+  const handleCreateSubcategory = (data) => {
+    createMutation.mutate(data);
+  };
+
+  const handleEditSubcategory = (data) => {
+    updateMutation.mutate({ id: editingSubcategory._id, data });
+  };
+
+  const handleDeleteSubcategory = (subcategoryId) => {
+    if (!window.confirm('Are you sure you want to delete this subcategory? This will also delete all associated items.')) {
+      return;
+    }
+    deleteMutation.mutate(subcategoryId);
   };
 
   const openEditModal = (subcategory) => {
@@ -146,12 +152,8 @@ const Subcategories = () => {
     getCategoryName(subcategory.categoryId)?.toLowerCase().includes(searchTerm.toLowerCase())
   ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoadingSubcategories || isLoadingCategories) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -198,9 +200,9 @@ const Subcategories = () => {
                 <Label htmlFor="create-categoryId">Select Category</Label>
                 <Select onValueChange={(value) => setValueCreate('categoryId', value)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue  />
+                    <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
-                  <SelectContent placeholder="Select parent category">
+                  <SelectContent>
                     {categories.map((category) => (
                       <SelectItem key={category._id} value={category._id}>
                         {category.name}
@@ -227,8 +229,8 @@ const Subcategories = () => {
               </div>
 
               <div className="flex items-center space-x-2 pt-4">
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? (
+                <Button type="submit" disabled={createMutation.isLoading} className="flex-1">
+                  {createMutation.isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Creating...</span>
@@ -244,7 +246,7 @@ const Subcategories = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setIsCreateModalOpen(false)}
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                 >
                   Cancel
                 </Button>
@@ -303,7 +305,7 @@ const Subcategories = () => {
                         </h3>
                         <Badge variant="outline" className="text-xs">
                           <FolderOpen className="h-3 w-3 mr-1" />
-                          {getCategoryName(subcategory?.category_id?._id)}
+                          {getCategoryName(subcategory.categoryId)}
                         </Badge>
                       </div>
                       {subcategory.description && (
@@ -329,6 +331,7 @@ const Subcategories = () => {
                       size="sm"
                       onClick={() => handleDeleteSubcategory(subcategory._id)}
                       className="text-red-600 hover:text-red-700"
+                      disabled={deleteMutation.isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -402,8 +405,8 @@ const Subcategories = () => {
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
+              <Button type="submit" disabled={updateMutation.isLoading} className="flex-1">
+                {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Updating...</span>
@@ -419,7 +422,7 @@ const Subcategories = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
-                disabled={isSubmitting}
+                disabled={updateMutation.isLoading}
               >
                 Cancel
               </Button>
@@ -432,4 +435,3 @@ const Subcategories = () => {
 };
 
 export default Subcategories;
-

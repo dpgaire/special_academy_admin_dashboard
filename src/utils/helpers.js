@@ -11,7 +11,7 @@ export const formatDate = (dateString) => {
       hour: '2-digit',
       minute: '2-digit',
     });
-  } catch (error) {
+  } catch {
     return 'Invalid Date';
   }
 };
@@ -162,7 +162,7 @@ export const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text);
     return true;
-  } catch (error) {
+  } catch {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -174,10 +174,9 @@ export const copyToClipboard = async (text) => {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       return true;
-    } catch (fallbackError) {
+    } catch {
       document.body.removeChild(textArea);
       return false;
     }
   }
 };
-

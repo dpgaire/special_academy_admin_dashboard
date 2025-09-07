@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
   Search, 
@@ -18,15 +19,26 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { categoriesAPI } from '../services/api';
 import { categorySchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const Categories = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await categoriesAPI.getAll();
+      return response.data || [];
+    },
+    onError: (error) => {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    }
+  });
 
   const {
     register: registerCreate,
@@ -46,68 +58,60 @@ const Categories = () => {
     resolver: yupResolver(categorySchema),
   });
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await categoriesAPI.getAll();
-      setCategories(response.data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateCategory = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await categoriesAPI.create(data);
+  const createMutation = useMutation({
+    mutationFn: categoriesAPI.create,
+    onSuccess: () => {
       toast.success('Category created successfully!');
       setIsCreateModalOpen(false);
       resetCreate();
-      fetchCategories();
-    } catch (error) {
+      queryClient.invalidateQueries(['categories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to create category';
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleEditCategory = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await categoriesAPI.update(editingCategory._id, data);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => categoriesAPI.update(id, data),
+    onSuccess: () => {
       toast.success('Category updated successfully!');
       setIsEditModalOpen(false);
       setEditingCategory(null);
       resetEdit();
-      fetchCategories();
-    } catch (error) {
+      queryClient.invalidateQueries(['categories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to update category';
       toast.error(message);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
-  const handleDeleteCategory = async (categoryId) => {
-    if (!window.confirm('Are you sure you want to delete this category? This will also delete all associated subcategories and items.')) {
-      return;
-    }
-
-    try {
-      await categoriesAPI.delete(categoryId);
+  const deleteMutation = useMutation({
+    mutationFn: categoriesAPI.delete,
+    onSuccess: () => {
       toast.success('Category deleted successfully!');
-      fetchCategories();
-    } catch (error) {
+      queryClient.invalidateQueries(['categories']);
+    },
+    onError: (error) => {
       const message = error.response?.data?.message || 'Failed to delete category';
       toast.error(message);
     }
+  });
+
+  const handleCreateCategory = (data) => {
+    createMutation.mutate(data);
+  };
+
+  const handleEditCategory = (data) => {
+    updateMutation.mutate({ id: editingCategory._id, data });
+  };
+
+  const handleDeleteCategory = (categoryId) => {
+    if (!window.confirm('Are you sure you want to delete this category? This will also delete all associated subcategories and items.')) {
+      return;
+    }
+    deleteMutation.mutate(categoryId);
   };
 
   const openEditModal = (category) => {
@@ -124,12 +128,8 @@ const Categories = () => {
     category.description?.toLowerCase().includes(searchTerm.toLowerCase())
   ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -186,8 +186,8 @@ const Categories = () => {
               </div>
 
               <div className="flex items-center space-x-2 pt-4">
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? (
+                <Button type="submit" disabled={createMutation.isLoading} className="flex-1">
+                  {createMutation.isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Creating...</span>
@@ -203,7 +203,7 @@ const Categories = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setIsCreateModalOpen(false)}
-                  disabled={isSubmitting}
+                  disabled={createMutation.isLoading}
                 >
                   Cancel
                 </Button>
@@ -282,6 +282,7 @@ const Categories = () => {
                       size="sm"
                       onClick={() => handleDeleteCategory(category._id)}
                       className="text-red-600 hover:text-red-700"
+                      disabled={deleteMutation.isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -333,8 +334,8 @@ const Categories = () => {
             </div>
 
             <div className="flex items-center space-x-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
+              <Button type="submit" disabled={updateMutation.isLoading} className="flex-1">
+                {updateMutation.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Updating...</span>
@@ -350,7 +351,7 @@ const Categories = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
-                disabled={isSubmitting}
+                disabled={updateMutation.isLoading}
               >
                 Cancel
               </Button>
