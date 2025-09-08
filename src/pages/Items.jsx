@@ -136,7 +136,7 @@ const Items = () => {
         subcategory_id: subcategoryId, // rename field
       };
 
-      return subcategoriesAPI.update(id, transformedData);
+      return itemsAPI.update(id, transformedData);
     },
     onSuccess: () => {
       toast.success("Item updated successfully!");
