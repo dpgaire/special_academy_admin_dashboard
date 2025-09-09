@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,8 @@ import {
   EyeOff,
   Eye,
   Lock,
+  Upload,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +54,8 @@ const Users = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -81,12 +85,25 @@ const Users = () => {
     formState: { errors: errorsEdit },
     reset: resetEdit,
     setValue: setValueEdit,
+    // watch: watchEdit,
   } = useForm({
     resolver: yupResolver(userUpdateSchema),
   });
 
   const createMutation = useMutation({
-    mutationFn: usersAPI.create,
+    mutationFn: (data) => {
+      const formData = new FormData();
+      Object.keys(data).forEach((key) => {
+        if (data[key]) {
+          if (key === "image") {
+            formData.append(key, data[key][0]);
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      return usersAPI.create(formData);
+    },
     onSuccess: () => {
       toast.success("User created successfully!");
       setIsCreateModalOpen(false);
@@ -100,12 +117,25 @@ const Users = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => usersAPI.update(id, data),
+    mutationFn: ({ id, data }) => {
+      const formData = new FormData();
+      Object.keys(data).forEach((key) => {
+        if (data[key]) {
+          if (key === "image") {
+            formData.append(key, data[key][0]);
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      return usersAPI.update(id, formData);
+    },
     onSuccess: () => {
       toast.success("User updated successfully!");
       setIsEditModalOpen(false);
       setEditingUser(null);
       resetEdit();
+      setPreviewImage(null);
       queryClient.invalidateQueries(['users']);
     },
     onError: (error) => {
@@ -131,11 +161,7 @@ const Users = () => {
   };
 
   const handleEditUser = (data) => {
-    const updateData = { ...data };
-    if (!updateData.password) {
-      delete updateData.password;
-    }
-    updateMutation.mutate({ id: editingUser._id, data: updateData });
+    updateMutation.mutate({ id: editingUser._id, data });
   };
 
   const handleDeleteUser = (userId) => {
@@ -152,7 +178,27 @@ const Users = () => {
       email: user.email,
       role: user.role,
     });
+    setPreviewImage(user.profileImage || null);
     setIsEditModalOpen(true);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Create a preview URL for the image
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewImage(previewUrl);
+    }
+  };
+
+  const removeImage = () => {
+    setPreviewImage(null);
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    // Clear the file from form state
+    setValueEdit('image', null);
   };
 
   const filteredUsers = users
@@ -358,9 +404,17 @@ const Users = () => {
                 >
                   {/* Left section */}
                   <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {user.fullName?.charAt(0)?.toUpperCase() || "U"}
-                    </div>
+                    {user.image ? (
+                      <img 
+                        src={user.image} 
+                        alt={user.fullName}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                        {user.fullName?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white break-words">
                         {user.fullName}
@@ -410,7 +464,61 @@ const Users = () => {
           <form
             onSubmit={handleSubmitEdit(handleEditUser)}
             className="space-y-4"
+            encType="multipart/form-data"
           >
+            {/* Profile Image Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="profile-image">Profile Image</Label>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  {previewImage ? (
+                    <>
+                      <img 
+                        src={previewImage} 
+                        alt="Preview" 
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                      <User className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Input
+                    id="profile-image"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileInputRef}
+                    {...registerEdit("image")}
+                    onChange={(e) => {
+                      registerEdit("image").onChange(e);
+                      handleFileChange(e);
+                    }}
+                  />
+                  <Label
+                    htmlFor="profile-image"
+                    className="cursor-pointer flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Image
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    JPG, PNG or GIF (max 5MB)
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="edit-fullName">Full Name</Label>
               <div className="relative">

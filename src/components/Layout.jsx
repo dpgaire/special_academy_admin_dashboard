@@ -115,12 +115,24 @@ const Layout = ({ children }) => {
 
           {/* User info at bottom of sidebar */}
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-blue-500 text-white text-sm">
-                  {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
-                </AvatarFallback>
-              </Avatar>
+            <Link to="/profile">
+            <div className="flex items-center space-x-3 cursor-pointer">
+               
+                   {user.image ? (
+                      <img 
+                        src={user.image} 
+                        alt={user.fullName}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Avatar className="h-8 w-8 cursor-pointer">
+                    <AvatarFallback className="bg-blue-500 text-white">
+                      {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                    )}
+                  
+                 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user?.fullName || 'Admin User'}
@@ -130,6 +142,7 @@ const Layout = ({ children }) => {
                 </p>
               </div>
             </div>
+             </Link>
           </div>
         </div>
 
@@ -163,12 +176,22 @@ const Layout = ({ children }) => {
 
                 {/* User menu */}
                 <div className="flex items-center space-x-3">
+                 
                   <Link to="/profile">
-                  <Avatar className="h-8 w-8 cursor-pointer">
+                   {user.image ? (
+                      <img 
+                        src={user.image} 
+                        alt={user.fullName}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Avatar className="h-8 w-8 cursor-pointer">
                     <AvatarFallback className="bg-blue-500 text-white">
                       {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
                     </AvatarFallback>
                   </Avatar>
+                    )}
+                  
                   </Link>
                   <Button
                     variant="ghost"

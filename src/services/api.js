@@ -1,8 +1,8 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = 'https://special-academy-server.vercel.app/api';
-// const API_BASE_URL = 'http://localhost:5000/api';
+// const API_BASE_URL = 'https://special-academy-server.vercel.app/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 
 // Create axios instance
@@ -69,7 +69,17 @@ export const usersAPI = {
   getAll: () => api.get('/users'),
   getById: (id) => api.get(`/users/${id}`),
   create: (data) => api.post('/users', data),
-  update: (id, data) => api.put(`/users/${id}`, data),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.put(`/users/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    } else {
+      return api.put(`/users/${id}`, data);
+    }
+  },
   delete: (id) => api.delete(`/users/${id}`),
 };
 
