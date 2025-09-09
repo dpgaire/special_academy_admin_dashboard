@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { User, Mail, Shield, Save, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Shield, Save, Lock, Eye, EyeOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,12 +18,14 @@ import { userUpdateSchema } from "../utils/validationSchemas";
 import { usersAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-
 const Profile = () => {
-  const { user ,setUser} = useAuth();
+  const { user, setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(user?.image || null);
+  const fileInputRef = useRef(null);
 
   const {
     register,
@@ -39,21 +41,53 @@ const Profile = () => {
     },
   });
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      
+      // Create a preview URL for the image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Remove password if empty
-      const updateData = { ...data };
-      if (!updateData.password) {
-        delete updateData.password;
+      // Create FormData to handle file upload
+      const formData = new FormData();
+      
+      // Append text fields
+      formData.append("fullName", data.fullName);
+      formData.append("email", data.email);
+      formData.append("role", data.role);
+      
+      // Append password if provided
+      if (data.password) {
+        formData.append("password", data.password);
+      }
+      
+      // Append image if selected
+      if (selectedImage) {
+        formData.append("image", selectedImage);
       }
 
-      await usersAPI.update(user._id, updateData);
+      // Update user with FormData
+      const updatedUser = await usersAPI.update(user._id, formData);
 
       // Update local storage with new user data
-      const updatedUser = { ...user, ...updateData };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
+      setSelectedImage(null); // Reset selected image after upload
+      setImagePreview(updatedUser.image); // Update image preview with new URL
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (error) {
@@ -71,6 +105,8 @@ const Profile = () => {
       email: user?.email || "",
       role: user?.role || "admin",
     });
+    setSelectedImage(null);
+    setImagePreview(user?.image || null);
     setIsEditing(false);
   };
 
@@ -89,12 +125,30 @@ const Profile = () => {
         {/* Profile Card */}
         <Card className="lg:col-span-1">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24">
-                <AvatarFallback className="bg-blue-500 text-white text-2xl">
-                  {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
-                </AvatarFallback>
-              </Avatar>
+            <div className="flex justify-center mb-4 relative">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt={user.fullName}
+                  className="w-24 h-24 rounded-full object-cover"
+                />
+              ) : (
+                <Avatar className="h-24 w-24">
+                  <AvatarFallback className="bg-blue-500 text-white text-2xl">
+                    {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={triggerFileInput}
+                 className="cursor-pointer absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white  p-2 rounded-full hover:border hover:border-blue-500  transition-colors"
+
+                >
+                  <Camera className="h-4 w-4 text-blue-500 hover:scale-110" />
+                </button>
+              )}
             </div>
             <CardTitle className="text-xl">
               {user?.fullName || "Admin User"}
@@ -148,6 +202,15 @@ const Profile = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+              />
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
