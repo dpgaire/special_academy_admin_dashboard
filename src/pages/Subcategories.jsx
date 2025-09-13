@@ -96,7 +96,15 @@ const Subcategories = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: subcategoriesAPI.create,
+    mutationFn: (data) => {
+    const { categoryId, ...rest } = data;
+    const transformedData = {
+      ...rest,
+      category_id: categoryId, // rename field
+    };
+
+    return subcategoriesAPI.create(transformedData);
+  },
     onSuccess: () => {
       toast.success("Subcategory created successfully!");
       setIsCreateModalOpen(false);

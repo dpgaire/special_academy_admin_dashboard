@@ -110,5 +110,10 @@ export const itemsAPI = {
   delete: (id) => api.delete(`/items/${id}`),
 };
 
+// Activity Log API
+export const activityLogAPI = {
+  getAll: () => api.get('/activity-logs'),
+};
+
 export default api;
 

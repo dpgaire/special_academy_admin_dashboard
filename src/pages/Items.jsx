@@ -115,7 +115,15 @@ const Items = () => {
   const editType = useWatch({ control: controlEdit, name: "type" });
 
   const createMutation = useMutation({
-    mutationFn: itemsAPI.create,
+    mutationFn: (data) => {
+    const { categoryId, ...rest } = data;
+    const transformedData = {
+      ...rest,
+      category_id: categoryId, // rename field
+    };
+
+    return itemsAPI.create(transformedData);
+  },
     onSuccess: () => {
       toast.success("Item created successfully!");
       setIsCreateModalOpen(false);
