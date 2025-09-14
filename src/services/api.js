@@ -115,5 +115,11 @@ export const activityLogAPI = {
   getAll: () => api.get('/activity-logs'),
 };
 
+
+// Activity Log API
+export const statsAPI = {
+  getAll: () => api.get('/stats'),
+};
+
 export default api;
 

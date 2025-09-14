@@ -18,10 +18,7 @@ import {
   LogIn,
 } from "lucide-react";
 import {
-  usersAPI,
-  categoriesAPI,
-  subcategoriesAPI,
-  itemsAPI,
+  statsAPI,
   activityLogAPI,
 } from "../services/api";
 import toast from "react-hot-toast";
@@ -37,20 +34,8 @@ const Dashboard = () => {
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       try {
-        const [usersRes, categoriesRes, subcategoriesRes, itemsRes] =
-          await Promise.all([
-            usersAPI.getAll(),
-            categoriesAPI.getAll(),
-            subcategoriesAPI.getAll(),
-            itemsAPI.getAll(),
-          ]);
-
-        return {
-          users: usersRes.data.length || 0,
-          categories: categoriesRes.data.length || 0,
-          subcategories: subcategoriesRes.data.length || 0,
-          items: itemsRes.data.length || 0,
-        };
+        const response = await statsAPI.getAll();
+        return response.data;
       } catch (error) {
         console.error("Error fetching stats:", error);
         toast.error("Failed to load dashboard statistics");
